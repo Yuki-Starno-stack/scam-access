@@ -1,0 +1,66 @@
+﻿STARTING A GAME
+1. Main menu: PLAY, then HOST A GAME, then INVITE ONLY or PUBLIC, then Campaign.
+
+STARTING THE DAY
+1. Press N. It sprints you to the door that starts the day.
+   (Or press ] until you hear "Door, Continue Day 1", then Backspace.)
+2. When you hear "Arrived", hold E for a second or two. This starts the workday.
+   If the day is already running, N tells you so. Then press M instead.
+
+SITTING AT YOUR DESK
+Chairs in the lobby and break room are not desks. You need a "Work computer".
+A "Lobby computer" only has Character Creator, Caller Manager and Game Manager, and never gets calls.
+1. Press M. It walks you to the nearest free work computer.
+   If there is none on this floor, it takes you to the floor entrance door instead. Hold E there, then press M again.
+   (Or press ] until you hear "Work computer", then Backspace.)
+2. It sprints you to that desk's chair, sits you down and opens the computer by itself.
+   You will hear "Computer, Desktop".
+   If it only says "Arrived", press E while standing.
+3. If you are already sitting in a desk chair, just press E.
+   It opens that desk's computer, wherever you are facing.
+
+GETTING YOUR FIRST SCAM APP (free, only once)
+1. On the desktop, use the Down arrow to find Scamazon and press Enter.
+2. Arrow to the Gift Card or Tech Support app and press Enter on its button.
+
+TAKING A CALL
+1. Wait at the computer. When it rings you will hear "Incoming call from ...".
+2. Press Enter to answer. Press Down arrow then Enter to decline instead.
+3. Talk out loud into your microphone. The caller answers with a voice.
+4. If you find a text box in the Phone window, press Enter on it, type your message, and press Enter to send.
+5. Use the scam app's Script to ask the caller for the listed details,
+   then type each answer into the matching box in that app.
+6. When you are done, find Hang up in the Phone window and press Enter.
+
+KEYS WHILE WALKING
+Up / Down arrow (or W / S)   walk forward / back
+Left / Right arrow           turn (Shift + arrow turns 90 degrees)
+A / D                        step sideways
+[ and ]                      previous / next nearby object (turns you to face it)
+Backspace                    auto walk to the selected object (stands you up if sitting)
+M                            sprint to the nearest free work computer and sit at it
+N                            sprint to the door that starts the work day
+Backslash                    where is the selected object
+Home                         look straight ahead
+E                            interact (hold E for doors)
+Q / Z                        other interact actions
+; (semicolon)                left click action
+' (apostrophe)               right click action
+Space                        jump / stand up from a chair
+F3                           wall sounds on or off
+F4                           object pings on or off
+
+KEYS AT THE COMPUTER
+Up / Down arrow    move through the window
+Enter              open or press the selected item, or start typing in a box
+Left / Right       change a dropdown or slider
+Tab / Shift+Tab    switch between open windows and the desktop
+Home / End         first / last item
+F1                 computer help
+Escape             leave the computer
+
+KEYS ANYWHERE
+F5    status: your money, the quota, time left, and the current training step
+F9    read the whole screen or window
+F10   repeat the last thing said
+F11   set the game and call language to English
