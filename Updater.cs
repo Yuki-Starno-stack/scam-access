@@ -10,7 +10,7 @@ namespace ScamAccess
     // A release holds version.txt (just the version number) and the setup files. publish-update.ps1 makes one.
     internal static class Updater
     {
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
         private const string Repo = "Yuki-Starno-stack/scam-access";
         private const string BaseUrl = "https://github.com/" + Repo + "/releases/latest/download/";
 

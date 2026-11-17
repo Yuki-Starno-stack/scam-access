@@ -68,7 +68,7 @@ namespace ScamAccess
             CheckRinging(os);
             bool now = AtComputer;
             if (now && !active) Enter(os);
-            if (!now) { active = false; return; }
+            if (!now) { active = false; vipShown = false; return; }
 
             Keyboard kb = Keyboard.current;
             if (kb == null) return;
@@ -83,8 +83,19 @@ namespace ScamAccess
             }
 
             TickShopping(os);
+            // The "Verify Discord VIP" pop-up is its own panel on top of the computer; take it over while it is up.
+            bool vip = VipRoot() != null;
+            if (vip != vipShown)
+            {
+                vipShown = vip;
+                Rebuild(os);
+                index = 0;
+                if (vip) Speech.Say("Verify Discord VIP window, " + items.Count + " items. Up and down to browse, Enter to use. Close is the last button. " + (items.Count > 0 ? items[0].Text : ""), true);
+                else FollowActiveWindow(os, true);
+            }
             if (kb.f1Key.wasPressedThisFrame) Help();
-            if (kb.tabKey.wasPressedThisFrame) { SwitchView(os, shift ? -1 : 1); return; }
+            if (kb.wKey.wasPressedThisFrame && (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) && !vipShown) { CloseCurrent(os); return; }
+            if (kb.tabKey.wasPressedThisFrame && !vipShown) { SwitchView(os, shift ? -1 : 1); return; }
             if (editing)
             {
                 // While typing in a box, Up/Down leave the box; everything else goes to the game.
@@ -104,10 +115,93 @@ namespace ScamAccess
             if (kb.rightArrowKey.wasPressedThisFrame) Adjust(1);
             if (kb.gKey.wasPressedThisFrame) GlobeGuess(os, false);
             if (kb.bKey.wasPressedThisFrame) NextBuyable(os, shift ? -1 : 1);
+            if (vipShown) return;
             if (kb.backquoteKey.wasPressedThisFrame) ListWindows(os);
             if (kb.digit0Key.wasPressedThisFrame) GoToWindow(os, 0);
             for (int n = 1; n <= 9; n++)
                 if (kb[Key.Digit1 + (n - 1)].wasPressedThisFrame) GoToWindow(os, n);
+        }
+
+        // ---------- Close window, Discord pop-up, button tooltips ----------
+
+        private bool vipShown;
+        private static readonly FieldInfo VipCurrentField = AccessTools.Field(typeof(DiscordVipVerificationUi), "current");
+        private static readonly FieldInfo VipRootField = AccessTools.Field(typeof(DiscordVipVerificationUi), "root");
+        private static readonly MethodInfo CloseAppMethod = AccessTools.Method(typeof(KolkataOsController), "CloseApp");
+
+        private static VisualElement VipRoot()
+        {
+            try
+            {
+                MonoBehaviour cur = VipCurrentField?.GetValue(null) as MonoBehaviour;
+                if (cur == null) return null;
+                VisualElement r = VipRootField?.GetValue(cur) as VisualElement;
+                return r != null && r.panel != null ? r : null;
+            }
+            catch { return null; }
+        }
+
+        // Icon-only buttons (the camera's take-selfie, copy, delete...) get their name from the tooltip the game registers for them.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, Func<string>> Tips =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, Func<string>>();
+
+        internal static string TipOf(VisualElement e)
+        {
+            if (e == null) return "";
+            try { if (Tips.TryGetValue(e, out Func<string> f)) return f() ?? ""; } catch { }
+            return "";
+        }
+
+        public static void Patch(Harmony harmony)
+        {
+            try
+            {
+                Type t = AccessTools.TypeByName("Kolkata.UI.KolkataOsTooltip");
+                MethodInfo m = t == null ? null : AccessTools.Method(t, "Register", new[] { typeof(VisualElement), typeof(Func<string>) });
+                if (m != null) harmony.Patch(m, postfix: new HarmonyMethod(typeof(OsNavigator), nameof(TooltipRegistered)));
+                else Plugin.Log.LogWarning("Tooltip Register not found; icon buttons stay unnamed");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("Tooltip patch failed: " + e.Message); }
+        }
+
+        private static void TooltipRegistered(VisualElement target, Func<string> textProvider)
+        {
+            if (target == null || textProvider == null) return;
+            Tips.Remove(target);
+            Tips.Add(target, textProvider);
+        }
+
+        private void CloseCurrent(KolkataOsController os)
+        {
+            if (viewApp == null) { Speech.Say("This is the desktop. There is no window to close. Tab or a number key picks a window.", true); return; }
+            object app = viewApp;
+            string title = AppTitle(app);
+            Invoke(CloseAppMethod, os, app);
+            if (IsOpenVisible(app) || F<object>(app, "State")?.ToString() == "OpenMinimized")
+            {
+                Speech.Say(title + " can't be closed right now.", true);
+                return;
+            }
+            // Land on the window that is now on top, or the desktop when nothing else is open.
+            object next = Get(ActiveAppField, os);
+            if (next == null || !IsOpenVisible(next))
+            {
+                List<object> open = OpenWindows(os);
+                next = open.Count > 0 ? open[open.Count - 1] : null;
+            }
+            viewIsCall = false;
+            viewApp = next;
+            lastSeenActive = Get(ActiveAppField, os);
+            if (viewApp != null) Invoke(DesktopIconClicked, os, viewApp);
+            Rebuild(os);
+            index = 0;
+            Speech.Say("Closed " + title + ". " + ViewName(os) + ", " + items.Count + " items" + (items.Count > 0 ? ". " + items[0].Text : ""), true);
+        }
+
+        private static bool IsRinging(KolkataOsController os)
+        {
+            try { return os != null && AwaitingAnswer != null && (bool)AwaitingAnswer.Invoke(os, null); }
+            catch { return false; }
         }
 
         // ---------- Scamazon shopping ----------
@@ -160,12 +254,12 @@ namespace ScamAccess
             if (!items.Exists(i => i.Card)) { Speech.Say("B jumps between things you can buy. It works in the Scamazon window.", true); return; }
             for (int i = index + step; i >= 0 && i < items.Count; i += step)
             {
-                if (!items[i].Buyable) continue;
+                if (!items[i].Card) continue; // every product, whether it is for sale, free or just opens its app
                 index = i;
                 Speech.Say(items[i].Text, true);
                 return;
             }
-            Speech.Say(step > 0 ? "Nothing more to buy below. Shift B goes back up." : "Nothing more to buy above.", true);
+            Speech.Say(step > 0 ? "No more products below. Shift B goes back up." : "No more products above.", true);
         }
 
         private void ActivateCard(Item it)
@@ -392,6 +486,7 @@ namespace ScamAccess
             lastSeenActive = viewApp;
             Rebuild(os);
             index = 0;
+            if (IsRinging(os) && VipRoot() == null) { viewIsCall = true; wasRinging = true; Rebuild(os); index = 0; Speech.Say("Computer. Incoming call from " + CallerName(os) + ". Press Enter to answer, or down arrow then Enter to decline.", true); return; }
             Speech.Say("Computer. " + ViewName(os) + ", " + items.Count + " items. Up and down to browse, Enter to use, Tab to switch windows, F1 for help.", true);
         }
 
@@ -399,7 +494,7 @@ namespace ScamAccess
         {
             Speech.Say("Computer keys. Up and down arrows move. Enter uses the item. Left and right change a dropdown or slider. " +
                 "Tab and shift tab switch between open windows and the desktop. Number keys 1 to 9 jump straight to an open window, 0 goes to the desktop, and the key left of 1 lists the open windows with their numbers. " +
-                "In Scamazon, each product is one item, Enter buys it or gets it free, and B jumps to the next thing you can buy, shift B to the previous. " +
+                "In Scamazon, each product is one item, Enter buys it or gets it free, and B jumps to the next product, shift B to the previous. Control W closes the current window. While a call is ringing, answer and decline are at the top of the desktop and of the Phone window. " +
                 "During a call, Control+K copies the newest number the caller gave you and fills it into its app; press it again for older numbers, and Control+V pastes in a text box. " +
                 "Home and end jump to first and last. F9 reads everything in this window. In IP Geolocation, G places your guess on the globe once the trace has finished. Escape leaves the computer.", true);
         }
@@ -458,6 +553,7 @@ namespace ScamAccess
 
         private string ViewName(KolkataOsController os)
         {
+            if (VipRoot() != null) return "Verify Discord VIP window";
             if (viewIsCall) return "Incoming call";
             return viewApp == null ? "Desktop" : AppTitle(viewApp) + " window";
         }
@@ -503,6 +599,14 @@ namespace ScamAccess
         private void Rebuild(KolkataOsController os)
         {
             items = new List<Item>();
+            VisualElement vipRoot = VipRoot();
+            if (vipRoot != null)
+            {
+                Collect(vipRoot, items);
+                lastViewSignature = ViewSignature(os);
+                index = Mathf.Clamp(index, 0, Math.Max(0, items.Count - 1));
+                return;
+            }
             if (viewIsCall)
             {
                 items.Add(new Item { Kind = ItemKind.Answer, Text = "Answer call from " + CallerName(os) + ", button" });
@@ -527,6 +631,12 @@ namespace ScamAccess
                 VisualElement confirm = root?.Q(null, "scamazon-confirmation-overlay");
                 if (confirm != null && UiText.IsShown(confirm)) root = confirm;
                 if (root != null) Collect(root, items);
+            }
+            // A call that is ringing can be answered from the desktop and from the Phone window too.
+            if (!viewIsCall && IsRinging(os) && (viewApp == null || AppTitle(viewApp).IndexOf("phone", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                items.Insert(0, new Item { Kind = ItemKind.Answer, Text = "Incoming call. Answer call from " + CallerName(os) + ", button" });
+                items.Insert(1, new Item { Kind = ItemKind.Decline, Text = "Decline call, button" });
             }
             lastViewSignature = ViewSignature(os);
             index = Mathf.Clamp(index, 0, Math.Max(0, items.Count - 1));

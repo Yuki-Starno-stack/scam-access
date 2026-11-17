@@ -159,6 +159,7 @@ namespace ScamAccess
             var harmony = new Harmony("scamaccess.screenreader");
             harmony.PatchAll(typeof(Patches));
             Announcements.Patch(harmony);
+            OsNavigator.Patch(harmony);
             MicMute.Init(Config);
             InviteCode.Init(Config);
             Updater.Init(Config, this);
@@ -450,7 +451,7 @@ namespace ScamAccess
                     role = "edit";
                     break;
                 case Button b:
-                    main = First(b.text, InnerText(b), b.tooltip, b.name);
+                    main = First(b.text, InnerText(b), b.tooltip, OsNavigator.TipOf(b), b.name);
                     role = "button";
                     break;
                 case ScrollView sv:

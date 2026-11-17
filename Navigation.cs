@@ -134,6 +134,14 @@ namespace ScamAccess
 
         private void GoToFreeDesk(PlayerInteractor pi)
         {
+            // N was just pressed and the door is still finishing its one-second hold. Walking off now
+            // cancels the hold, and the closed door then reads as "locked", so wait for it instead.
+            if (watchDoor != null && !watchDoor.IsOpen && Time.unscaledTime < watchGiveUpAt)
+            {
+                deskAfterDoor = true;
+                Speech.Say("The door is still opening. Hold still. I'll take you to a work computer as soon as it opens.", true);
+                return;
+            }
             if (pi.isSitting)
             {
                 foreach (MonitorInteractable m in UnityEngine.Object.FindObjectsByType<MonitorInteractable>(FindObjectsSortMode.None))
@@ -509,7 +517,9 @@ namespace ScamAccess
         }
 
         private float doorWaitUntil, nextDoorCheck;
-        private readonly HashSet<Interactable> doorsTried = new HashSet<Interactable>();
+        // Doors close again by themselves once everyone has passed, and another player can open one just before
+        // our own hold finishes, so a door is tried again after a short pause instead of being given up on.
+        private readonly Dictionary<Interactable, float> doorsTried = new Dictionary<Interactable, float>();
 
         // Open closed doors that are in the way. Never opens the start-of-day door unless it is the destination.
         private bool TryOpenDoorAhead(PlayerInteractor pi, Vector3 goal)
@@ -521,7 +531,8 @@ namespace ScamAccess
             Vector3 fwd = body != null ? Vector3.ProjectOnPlane(body.forward, Vector3.up).normalized : Vector3.forward;
             foreach (Interactable it in allInteractables)
             {
-                if (!(it is Door || it is FloorEntranceDoor) || it == null || !it.isActiveAndEnabled || doorsTried.Contains(it)) continue;
+                if (!(it is Door || it is FloorEntranceDoor) || it == null || !it.isActiveAndEnabled) continue;
+                if (doorsTried.TryGetValue(it, out float triedAt) && Time.unscaledTime - triedAt < 2.5f) continue;
                 if (it is Door sd && sd.startsGame && !sd.IsOpen && !ReferenceEquals(it, selectedObject))
                 {
                     // The closed day door is in the way. Opening it starts the day or casts a vote,
@@ -545,7 +556,7 @@ namespace ScamAccess
                 to.y = 0f;
                 if (to.magnitude > 1.8f || Vector3.Dot(to.normalized, fwd) < 0.3f) continue;
                 if (!it.CanInteract(pi)) continue;
-                doorsTried.Add(it);
+                doorsTried[it] = Time.unscaledTime;
                 Face(TargetPoint(it));
                 it.CmdInteract(pi);
                 doorWaitUntil = Time.unscaledTime + 1.4f; // hold doors open after about a second

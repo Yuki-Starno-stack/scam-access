@@ -23,6 +23,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Building the installers failed' }
 $up = "$PSScriptRoot\build\upload"
 New-Item -ItemType Directory -Force $up | Out-Null
 Copy-Item "$PSScriptRoot\Scam Access.exe" "$up\Scam.Access.exe"
+# The README goes on the release page as Scam.Access.readme.txt, never into the source code (the user's choice).
+# GitHub lists release files alphabetically (ignoring case), so this name puts it right after Scam.Access.exe
+# and before version.txt - the order the user asked for.
+Copy-Item "$(Split-Path $PSScriptRoot -Parent)\README.md" "$up\Scam.Access.readme.txt"
 [IO.File]::WriteAllText("$up\version.txt", $Version)
 
 # Upload this version's code first, so the release's "Source code" downloads contain it.
