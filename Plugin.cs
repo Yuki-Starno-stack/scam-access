@@ -164,6 +164,7 @@ namespace ScamAccess
             InviteCode.Init(Config);
             Updater.Init(Config, this);
             QuitGame.Init(Config);
+            ResetSave.Init(Config);
             CallValues.Init(Config, harmony);
             BossFight.Init(Config, harmony);
             SceneManager.activeSceneChanged += (from, to) =>
@@ -204,7 +205,7 @@ namespace ScamAccess
             bool typing = (OsNavigator.AtComputer && OsNavigator.EditingText) || Normalize(lastFocused as VisualElement) is TextField;
             CallValues.Update(kb); // Control+K, also while typing in a box
             BossFight.Update(kb);
-            if (!typing) { MicMute.Update(kb); InviteCode.Update(kb); QuitGame.Update(kb); } // letter keys, so not while typing
+            if (!typing) { MicMute.Update(kb); InviteCode.Update(kb); QuitGame.Update(kb); ResetSave.Update(kb); } // letter keys, so not while typing
             if (kb.f5Key.wasPressedThisFrame ||(kb.minusKey.wasPressedThisFrame && !typing)) Announcements.SayStatus();
             if (kb.f11Key.wasPressedThisFrame)
             {
